@@ -93,7 +93,10 @@ def select(tree: "Tree", state: npt.ArrayLike, k: int, alpha: float):
 
     # TODO:
 
-
+    child_states = successors(state, player=tree.get(state).player)
+    for s in child_states:
+        if tree.get(s) is None:
+            return state # the state is not in the tree
 
     return state
 
@@ -113,10 +116,10 @@ def expand(tree: "Tree", state: npt.ArrayLike, k: int):
     # TODO:
     parent_player = tree.get(state).player
     child_player = "O" if parent_player == "X" else "X"
-    child_states = successors(state, state)
+    child_states = successors(state, parent_player)
 
     for child_state in child_states:
-        if utility is -1 or 1:
+        if utility is -1 or 1 or 0:
             return tree, child_state
         else:
             # add to the tree
