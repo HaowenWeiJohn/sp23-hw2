@@ -111,6 +111,17 @@ def expand(tree: "Tree", state: npt.ArrayLike, k: int):
     """
 
     # TODO:
+    parent_player = tree.get(state).player
+    child_player = "O" if parent_player == "X" else "X"
+    child_states = successors(state, state)
+
+    for child_state in child_states:
+        if utility is -1 or 1:
+            return tree, child_state
+        else:
+            # add to the tree
+            tree.add(Node(state, tree.get(state), child_player, 0, 0))
+
     return tree, state
 
 
@@ -127,7 +138,12 @@ def simulate(state: npt.ArrayLike, player: str, k: int):
     """
 
     # TODO:
-    return 0
+    current = player
+    while utility(state, k) is None:
+        state = random.choice(successors(state, current))
+        current = "O" if current == "X" else "X"
+
+    return utility(state, k)
 
 
 def backprop(tree: "Tree", state: npt.ArrayLike, result: float):
@@ -144,9 +160,34 @@ def backprop(tree: "Tree", state: npt.ArrayLike, result: float):
     Returns:
         utils.Tree: the game tree
     """
+    if tree.get(state).parent is None:
+        return tree
 
-    # TODO:
-    return tree
+    tree.get(state).n += 1
+    if result == 1:
+        tree.get(state).w += 1
+    if result ==0:
+        tree.get(state).w += 0.5
+
+    result *= -1
+    #pass
+    # this is the result for the new
+
+    # if tree.get(state).parent is None:
+    #     return tree
+    #
+    # if result == -1:
+    #    tree.get(state).w += 1
+    # if result == 1:
+    #     pass
+    #     # tree.get(state).w += 1
+    # if result == 0:
+    #     tree.get(state).w += 0.5
+    #
+    # result *= -1
+    #
+    # backprop(tree, tree.get(state).parent.state, result=result)
+
 
 
 # ******************************************************************************
@@ -161,6 +202,7 @@ def MCTS(state: npt.ArrayLike, player: str, k: int, rollouts: int, alpha: float)
 
     for i in range(rollouts):
         leaf = select(tree, state, k, alpha)
+        # the new expanded node
         tree, new = expand(tree, leaf, k)
         result = simulate(new, tree.get(new).player, k)
         tree = backprop(tree, new, result)
