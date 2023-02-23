@@ -23,9 +23,24 @@ def max_value(state: npt.ArrayLike, alpha: float, beta: float, k: int):
     Returns:
         tuple[float, np.ndarray]: utility value and the board after the move
     """
-
     # TODO:
-    return 0, state
+    # return 0, state
+
+    if utility(state,k):
+        return utility(state,k), None # value is utility, move is null
+    v = np.NINF
+    for a in successors(state, player='X'):
+        v2, a2 = min_value(a, alpha=alpha, beta=beta, k=k)
+        if v2 > v:
+            v, move = v2, a
+            alpha = max(alpha, v)
+        if v>=beta:
+            return v, move
+        return v, move
+
+
+
+
 
 
 def min_value(state: npt.ArrayLike, alpha: float, beta: float, k: int):
@@ -41,8 +56,20 @@ def min_value(state: npt.ArrayLike, alpha: float, beta: float, k: int):
         tuple[float, np.ndarray]: utility value and the board after the move
     """
 
-    # TODO:
-    return 0, state
+    # # TODO:
+    # return 0, state
+
+    if utility(state,k):
+        return utility(state,k), None # value is utility, move is null
+    v = np.Inf
+    for a in successors(state, player='O'):
+        v2, a2 = min_value(a, alpha=alpha, beta=beta, k=k)
+        if v2 < v:
+            v, move = v2, a
+            beta = max(beta, v)
+        if v<=alpha:
+            return v, move
+        return v, move
 
 
 """
@@ -65,6 +92,9 @@ def select(tree: "Tree", state: npt.ArrayLike, k: int, alpha: float):
     """
 
     # TODO:
+
+
+
     return state
 
 
