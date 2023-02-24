@@ -5,7 +5,6 @@ import numpy.typing as npt
 
 from hw2.utils import utility, successors, Node, Tree, GameStrategy
 
-
 """
 Alpha Beta Search
 """
@@ -25,22 +24,19 @@ def max_value(state: npt.ArrayLike, alpha: float, beta: float, k: int):
     """
     # TODO:
     # return 0, state
-
-    if utility(state,k):
-        return utility(state,k), None # value is utility, move is null
+    move = None
+    if utility(state, k) is not None:
+        return utility(state, k), None  # value is utility, move is null
     v = np.NINF
     for a in successors(state, player='X'):
         v2, a2 = min_value(a, alpha=alpha, beta=beta, k=k)
         if v2 > v:
             v, move = v2, a
             alpha = max(alpha, v)
-        if v>=beta:
+            # print("alpha ", alpha)
+        if v >= beta:
             return v, move
-        return v, move
-
-
-
-
+    return v, move
 
 
 def min_value(state: npt.ArrayLike, alpha: float, beta: float, k: int):
@@ -58,18 +54,19 @@ def min_value(state: npt.ArrayLike, alpha: float, beta: float, k: int):
 
     # # TODO:
     # return 0, state
-
-    if utility(state,k):
-        return utility(state,k), None # value is utility, move is null
+    move = None
+    if utility(state, k) is not None:
+        return utility(state, k), None  # value is utility, move is null
     v = np.Inf
     for a in successors(state, player='O'):
-        v2, a2 = min_value(a, alpha=alpha, beta=beta, k=k)
+        v2, a2 = max_value(a, alpha=alpha, beta=beta, k=k)
         if v2 < v:
             v, move = v2, a
-            beta = max(beta, v)
-        if v<=alpha:
+            beta = min(beta, v)
+            # print("beta ", beta)
+        if v <= alpha:
             return v, move
-        return v, move
+    return v, move
 
 
 """
@@ -92,13 +89,34 @@ def select(tree: "Tree", state: npt.ArrayLike, k: int, alpha: float):
     """
 
     # TODO:
+    # if this node is a terminal node
+    if utility(state, k) is not None:
+        return state
 
     child_states = successors(state, player=tree.get(state).player)
     for s in child_states:
-        if tree.get(s) is None:
-            return state # the state is not in the tree
+        if tree.get(s) is None:  # if the node is not in the tree
+            return state  # the state is not in the tree
 
-    return state
+
+    # all states are in the tree
+    max_uct = np.NINF
+    max_uct_state = None
+    for s in child_states:
+        child_node = tree.get(s)
+        if (child_node.parent.state == state).all(): # compare the result
+            uct = child_node.w / child_node.N + \
+                  alpha * np.sqrt(np.log(child_node.parent.N) / child_node.N)
+            if uct > max_uct:
+                max_uct = uct
+                max_uct_state = s
+
+    if max_uct_state is None:
+        return state
+
+    selected_state = select(tree, max_uct_state, k, alpha)
+    return selected_state
+    # find max uct
 
 
 def expand(tree: "Tree", state: npt.ArrayLike, k: int):
@@ -113,19 +131,23 @@ def expand(tree: "Tree", state: npt.ArrayLike, k: int):
         tuple[utils.Tree, np.ndarray]: the tree and the game state
     """
 
+    if utility(state, k) is not None:
+        return tree, state
+
     # TODO:
+    # print("expand:")
     parent_player = tree.get(state).player
     child_player = "O" if parent_player == "X" else "X"
     child_states = successors(state, parent_player)
-
     for child_state in child_states:
-        if utility is -1 or 1 or 0:
-            return tree, child_state
-        else:
-            # add to the tree
-            tree.add(Node(state, tree.get(state), child_player, 0, 0))
+        if tree.get(child_state) is None:
+                tree.add(Node(child_state, tree.get(state), child_player, 0, 0))
+                return tree, child_state
 
     return tree, state
+
+
+
 
 
 def simulate(state: npt.ArrayLike, player: str, k: int):
@@ -142,10 +164,11 @@ def simulate(state: npt.ArrayLike, player: str, k: int):
 
     # TODO:
     current = player
+    # current = "O" if current == "X" else "X"
     while utility(state, k) is None:
+        # print(state)
         state = random.choice(successors(state, current))
         current = "O" if current == "X" else "X"
-
     return utility(state, k)
 
 
@@ -163,17 +186,48 @@ def backprop(tree: "Tree", state: npt.ArrayLike, result: float):
     Returns:
         utils.Tree: the game tree
     """
-    if tree.get(state).parent is None:
-        return tree
+    current_node = tree.get(state)
+    while current_node.parent is not None:
+        # print(current_node.player)
+        current_node.N += 1
+        if result == -1: # if winning, we add 1
+            current_node.w += 1
+        if result == 0:
+            current_node.w += 0.5
+        result *= -1
+        current_node = current_node.parent
 
-    tree.get(state).n += 1
-    if result == 1:
-        tree.get(state).w += 1
-    if result ==0:
-        tree.get(state).w += 0.5
+    # the root node
+    current_node.N += 1
+    if result == -1:
+        current_node.w += 1
+    if result == 0:
+        current_node.w += 0.5
 
-    result *= -1
-    #pass
+    return tree
+
+    # current_node = tree.get(state)
+    # while current_node.parent is not None:
+    #     current_node.parent.n += 1
+    #     if result == -1:
+    #         current_node.n+=1
+
+    # while current_node.parent is not None:
+    #     if result == -1:
+    #         current_node.parent.w += 1
+
+    # if tree.get(state).parent is None:
+    #     return tree
+    #
+    # tree.get(state).n += 1
+    # if result == 1:
+    #     tree.get(state).w += 1
+    # if result ==0:
+    #     tree.get(state).w += 0.5
+    #
+    # result *= -1
+
+    # pass
     # this is the result for the new
 
     # if tree.get(state).parent is None:
@@ -192,7 +246,6 @@ def backprop(tree: "Tree", state: npt.ArrayLike, result: float):
     # backprop(tree, tree.get(state).parent.state, result=result)
 
 
-
 # ******************************************************************************
 # ****************************** ASSIGNMENT ENDS *******************************
 # ******************************************************************************
@@ -204,9 +257,10 @@ def MCTS(state: npt.ArrayLike, player: str, k: int, rollouts: int, alpha: float)
     tree = Tree(Node(state, None, player, 0, 1))
 
     for i in range(rollouts):
+        # print(i)
         leaf = select(tree, state, k, alpha)
-        # the new expanded node
-        tree, new = expand(tree, leaf, k)
+        # print("leaf ", leaf)# the new expanded node
+        tree, new = expand(tree, leaf, k) # added to the tree
         result = simulate(new, tree.get(new).player, k)
         tree = backprop(tree, new, result)
 
@@ -234,14 +288,14 @@ def ABS(state: npt.ArrayLike, player: str, k: int):
 
 
 def game_loop(
-    state: npt.ArrayLike,
-    player: str,
-    k: int,
-    Xstrat: GameStrategy = GameStrategy.RANDOM,
-    Ostrat: GameStrategy = GameStrategy.RANDOM,
-    rollouts: int = 0,
-    mcts_alpha: float = 0.01,
-    print_result: bool = False,
+        state: npt.ArrayLike,
+        player: str,
+        k: int,
+        Xstrat: GameStrategy = GameStrategy.RANDOM,
+        Ostrat: GameStrategy = GameStrategy.RANDOM,
+        rollouts: int = 0,
+        mcts_alpha: float = 0.01,
+        print_result: bool = False,
 ):
     # Plays the game from state to terminal
     # If random_opponent, opponent of player plays randomly, else same strategy as player
